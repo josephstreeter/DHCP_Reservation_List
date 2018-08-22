@@ -123,6 +123,7 @@ function New-Reservation()
         {
         "Nothing created"
         }
+    Replicate-DNSServers
     }
 
 Function Export-Reservation()
@@ -280,8 +281,9 @@ Function Edit-Reservation()
             -Name $(if ($Hostname) {$Hostname} Else {$current.Name}) `
             -Description $(if ($Group) {$Group} Else {$current.Description})
     
-        $res=Get-DhcpServerv4Reservation -IPAddress $ip
+        #$res=Get-DhcpServerv4Reservation -IPAddress $ip
         }
+    Replicate-DNSServers
     }
 
 Function Get-Reservation()
@@ -366,14 +368,3 @@ Function Get-Reservation()
         }
     
     }
-
-
-<#
-No space in list file when run in prod
-Modify export to deliminate "group" from description
-Modify edit function to deliminate description
-Hardcode A1 - config file? 
-Remove-reservation function
-Add replication to each function
-Add and remove functions add and remove the mac from "allow list"
-#>
