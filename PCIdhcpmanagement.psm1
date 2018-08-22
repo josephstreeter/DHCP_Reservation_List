@@ -368,3 +368,29 @@ Function Get-Reservation()
         }
     
     }
+
+Function Edit-FilterLists()
+    {
+    Param(
+    [Parameter(Mandatory=$True)][string]$list,
+    [Parameter(Mandatory=$True)][string]$Action,
+    [Parameter(Mandatory=$True)][ValidateScript({validate-data -data $_ -type MAC})][string]$mac,
+    [Parameter(Mandatory=$True)][string]$HostName,
+    [Parameter(Mandatory=$False)][string]$DHCPServer
+    )
+
+    if (-not $DHCPServer) {$DHCPServer="LocalHost"}
+    
+    if ($Action -eq "Add")
+        {
+        Add-DhcpServerv4Filter -ComputerName $DHCPServer -List $Action -MacAddress $mac -Description $HostName
+        }
+    Elseif ($Action -eq "Remove")
+        {
+        remove-DhcpServerv4Filter -ComputerName $DHCPServer -MacAddress $mac
+        }
+    Else
+        {
+        "Improper action specified"
+        }
+    }
