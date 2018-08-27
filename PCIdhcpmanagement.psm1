@@ -176,7 +176,7 @@ Function Export-Reservation()
     
     foreach ($group in $groups)
         {
-        $results | Where-Object {$_.group -eq $group} |  % {"{0,-10}{1,-10}" -f $_.IP,$_.Host} | Out-File ".\lists\$group.txt"
+        $results | Where-Object {$_.group -eq $group} |  % {$_.IP+","+$_.Host} | Out-File ".\lists\$group.txt"
         }
     Return "$($results.count) Reservations"
     }
@@ -392,5 +392,42 @@ Function Edit-FilterLists()
     Else
         {
         "Improper action specified"
+        }
+    }
+
+function Check-Replication()
+    {
+    $Scopes=$reservations=@()
+    $DHCPServers=(Get-DhcpServerInDC).DNSName    
+    
+    Foreach ($DHCPServer in $DHCPServers)
+        {
+        Foreach ($scope in $(Get-DhcpServerv4Scope -ComputerName $DHCPServer))
+                { 
+                $scopes+=New-Object psobject -Property @{"Scope"=$scope.scopeid
+                                                         "Server"=$DHCPServer
+                                                         "Name"=$Scope.name
+                                                         } 
+                foreach ($reservation in $(Get-DhcpServerv4Reservation -ComputerName $DHCPServer -ScopeId $scope.scopeid))
+                    {
+                    $reservations+=New-Object psobject -Property @{"IPAddress"=$reservation.ipaddress
+                                                                   "Server"=$DHCPServer
+                                                                   "ClientID"=$reservation.clientid
+                                                                   "Name"=$reservation.name
+                                                                   "Description"=$reservation.description
+                                                                   }
+                    }
+                }
+        }
+
+    $diff=Compare-Object $($Reservations | ? {$_.server -eq $DHCPServers[0]} | select IPAddress, ClientID) $($Reservations | ? {$_.server -eq $DHCPServers[1]} | select IPAddress, ClientID)
+
+    if ($diff)
+        {
+        Invoke-DhcpServerv4FailoverReplication -Force -Verbose
+        }
+    Else
+        {
+        "DHCP Servers synchronized"
         }
     }
