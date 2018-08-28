@@ -1,5 +1,5 @@
 # DHCP_Reservation_List
-'
+...
 validate-data($data,$type)
 Generate-MacAddress()
 Replicate-DHCPServers()
@@ -181,4 +181,5 @@ Edit-Reservation()
     hostname
     The new hostname of the reservation to be searched for.
 Edit-FilterLists()
-Check-Replication()'
+Check-Replication()
+...
