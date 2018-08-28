@@ -1,5 +1,4 @@
 # DHCP_Reservation_List
-# DHCP_Reservation_List
 validate-data($data,$type)
 Generate-MacAddress()
 Replicate-DHCPServers()
