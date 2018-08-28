@@ -1,5 +1,22 @@
 ﻿function validate-data($data,$type)
     {
+    <#
+    .SYNOPSIS
+    Validates IP, MAC, and Group data
+    .DESCRIPTION
+    Validates IP, MAC, and Group data before allowing it to be used in outher functions.
+    The function uses regex for most of the validation. Available groups are read from 
+    a text file. 
+    .EXAMPLE
+    The following command will validate the format of an IP address
+
+    validate-data -data "192.168.0.100" -type IP
+
+    .PARAMETER data
+    The data to be validated
+    .PARAMETER type
+    The type (IP, MAC, Group) of data to be validated
+    #>
     $scopeadd="^(?:(?:0?0?\d|0?[1-9]\d|1\d\d|2[0-5][0-5]|2[0-4]\d)\.){3}(?:0?0?\d|0?[1-9]\d|1\d\d|2[0-5][0-5]|0\d)$" # make to require a 0 at the end
     $ipadd="^(?:(?:0?0?\d|0?[1-9]\d|1\d\d|2[0-5][0-5]|2[0-4]\d)\.){3}(?:0?0?\d|0?[1-9]\d|1\d\d|2[0-5][0-5]|2[0-4]\d)$"
     $macadd="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
@@ -176,7 +193,7 @@ Function Export-Reservation()
     
     foreach ($group in $groups)
         {
-        $results | Where-Object {$_.group -eq $group} |  % {$_.IP+","+$_.Host} | Out-File ".\lists\$group.txt"
+        $results | Where-Object {$_.group -eq $group} |  % {$_.IP+" "+$_.Host} | Out-File ".\lists\$group.txt"
         }
     Return "$($results.count) Reservations"
     }
