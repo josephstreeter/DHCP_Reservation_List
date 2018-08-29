@@ -37,11 +37,6 @@ function Generate-MacAddress()
     Return $results
     }
 
-function Replicate-DNSServers()
-    {
-    Invoke-DhcpServerv4FailoverReplication
-    }
-
 function New-Reservation()
     {
     <#
@@ -134,13 +129,15 @@ function New-Reservation()
             -IP $results.ip `
             -Description $results.group `
             -hostname $results.hostname `
-            -ClientId $results.mac
+            -ClientId $results.mac `
+            -verbose
         }
     Else
         {
         "Nothing created"
         }
-    Replicate-DNSServers
+    Edit-FilterLists -list allow -Action add -mac $results.mac -HostName $results.hostname
+    Replicate-DHCPServers
     }
 
 Function Export-Reservation()
@@ -285,7 +282,7 @@ Function Edit-Reservation()
     Hostname  
     `tCurrent: $($Current.Name) 
     `tNew:     $($New.Name)
-    Mac
+    Group
     `tCurrent: $($Current.Description) 
     `tNew:     $($New.Description)`n"
 
@@ -297,93 +294,25 @@ Function Edit-Reservation()
             -ClientID $(if ($mac) {$mac} Else {$current.ClientID}) `
             -Name $(if ($Hostname) {$Hostname} Else {$current.Name}) `
             -Description $(if ($Group) {$Group} Else {$current.Description})
-    
+        
+        Edit-FilterLists -list allow -Action add -mac $New.ClientID -HostName $new.name
         #$res=Get-DhcpServerv4Reservation -IPAddress $ip
         }
-    Replicate-DNSServers
+    Replicate-DHCPServers
     }
 
 Function Get-Reservation()
     {
-    <#
-    .SYNOPSIS
-    Searches for reservations
-    .DESCRIPTION
-    Uses MAC address, group name, host name, or scope to search
-    for reservations that are already configured. 
-    .EXAMPLE
-    The following command will search for an existing reservation by
-    mac address
-
-    Get-Reservation -mac 00-aa-00-10-11-04
-
-    IPAddress       ScopeId         ClientId             Name               Type    Description         
-    ---------       -------         --------             ----               ----    -----------         
-    10.0.101.104    10.0.101.0      00-aa-00-10-11-04    Server-101-104     Both    Server-101-104 Desc
-
-    .EXAMPLE
-    Multiple attributes can be updated by using multiple parameters
-
-    Get-Reservation -group skidata
-    IPAddress       ScopeId        ClientId             Name              Type      Description         
-    ---------       -------        --------             ----              ----      -----------         
-    10.0.101.100    10.0.101.0     ab-ab-ab-cd-cd-cd    ServerAAA         Both      skidata             
-    10.0.101.101    10.0.101.0     00-aa-00-10-11-01    Server-101-101    Both      Skidata      
-    
-    .PARAMETER ip
-    The IP address of the reservation to be searched for. The parameter
-    is mandetory. 
-    .PARAMETER mac
-    The mac address of the reservation to be searched for.
-    The address must be in the form of "a7:e8:85:54:44:c5" or 
-    "a7-e8-85-54-44-c5"
-    .PARAMETER group
-    The organization or service of the reservation to be searched for.
-    .PARAMETER hostname
-    The new hostname of the reservation to be searched for.
-    #>
-    
     Param(
-    [Parameter(Mandatory=$false)][ValidateScript({validate-data -data $_ -type IP})][string]$ip,
-    [Parameter(Mandatory=$False)][ValidateScript({validate-data -data $_ -type MAC})][string]$mac,
-    [Parameter(Mandatory=$False)][ValidateScript({validate-data -data $_ -type group})][string]$group,
-    [Parameter(Mandatory=$False)][ValidateScript({validate-data -data $_ -type IP})][string]$scope,
-    [Parameter(Mandatory=$False)][string]$HostName,
+    [Parameter(Mandatory=$True)][string]$Data,
     [Parameter(Mandatory=$False)][string]$DHCPServer
     )
-    
     if (-not $DHCPServer) {$DHCPServer="LocalHost"}
 
-    if ($scope)
-        {
-        Get-DhcpServerv4Reservation -scopeID $scope -ComputerName $DHCPServer
-        }
-    Elseif ($ip)
-        {
-        Get-DhcpServerv4Reservation -IPAddress $ip
-        }
-    Elseif ($mac)
-        {
-        foreach ($scopeid in $(Get-DhcpServerv4scope).ScopeId)
-            {
-            Get-DhcpServerv4Reservation -ScopeId $scopeid -ClientId $mac -ea SilentlyContinue
-            }
-        }
-    Elseif ($Group)
-        {
-        foreach ($scopeid in $(Get-DhcpServerv4scope).ScopeId)
-            {
-            Get-DhcpServerv4Reservation -ScopeId $scopeid -ea SilentlyContinue | ? {$_.description -eq $group}
-            }
-        }
-    Elseif ($hostname)
-        {
-        foreach ($scopeid in $(Get-DhcpServerv4scope).ScopeId)
-            {
-            Get-DhcpServerv4Reservation -ScopeId $scopeid -ea SilentlyContinue | ? {$_.name -eq $hostname}
-            }
-        }
+    $res=Get-DhcpServerv4Scope | % {Get-DhcpServerv4Reservation -ComputerName $DHCPServer -ScopeId $_.scopeid -ErrorAction SilentlyContinue} | `
+        ? {($_.name -eq $data) -or ($_.ipaddress -eq $data) -or ($_.clientid -eq $data)  -or ($_.name -eq $data)  -or ($_.description -eq $data)}
     
+    Return $res
     }
 
 Function Edit-FilterLists()
@@ -400,11 +329,11 @@ Function Edit-FilterLists()
     
     if ($Action -eq "Add")
         {
-        Add-DhcpServerv4Filter -ComputerName $DHCPServer -List $List -MacAddress $mac -Description $HostName
+        Add-DhcpServerv4Filter -ComputerName $DHCPServer -List $List -MacAddress $mac -Description $HostName -Verbose
         }
     Elseif ($Action -eq "Remove")
         {
-        remove-DhcpServerv4Filter -ComputerName $DHCPServer -MacAddress $mac
+        remove-DhcpServerv4Filter -ComputerName $DHCPServer -MacAddress $mac -Verbose
         }
     Else
         {
@@ -412,13 +341,15 @@ Function Edit-FilterLists()
         }
     }
 
-function Check-Replication()
+function Replicate-DHCPServers()
     {
     $Scopes=$reservations=@()
     $DHCPServers=(Get-DhcpServerInDC).DNSName    
     
     Foreach ($DHCPServer in $DHCPServers)
         {
+        if (-not $DHCPServer) {$DHCPServer="LocalHost"}
+        
         Foreach ($scope in $(Get-DhcpServerv4Scope -ComputerName $DHCPServer))
                 { 
                 $scopes+=New-Object psobject -Property @{"Scope"=$scope.scopeid
@@ -446,5 +377,33 @@ function Check-Replication()
     Else
         {
         "DHCP Servers synchronized"
+        }
+    }
+
+Function Remove-Reservation()
+    {
+    Param(
+    [Parameter(Mandatory=$True)][string]$Data,
+    [Parameter(Mandatory=$False)][string]$DHCPServer
+    )
+    if (-not $DHCPServer) {$DHCPServer="LocalHost"}
+    
+    $res=Get-Reservation -Data $data
+    
+    $res | % {"Name:`t $($_.Name) IP:`t $($_.ipaddress) MAC:`t $($_.clientid) Group:`t $($_.description)"} ; "`n"
+
+    if ($res.count -gt 1)
+        {
+        if ($(Read-Host "This will delete multiple reservations. Are you sure you want to continue? (y/n)") -ne "y")
+            {
+            Break
+            }
+        }
+    
+    If ($(Read-Host "Do you want to delete this reservation? (y/n)") -eq "y")
+        {
+        $res | Remove-DhcpServerv4Reservation -Verbose
+        $res | % {Edit-FilterLists -list allow -Action remove -mac $_.ClientID -HostName $_.name}
+        Replicate-DHCPServers
         }
     }
