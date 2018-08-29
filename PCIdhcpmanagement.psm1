@@ -400,7 +400,7 @@ Function Edit-FilterLists()
     
     if ($Action -eq "Add")
         {
-        Add-DhcpServerv4Filter -ComputerName $DHCPServer -List $Action -MacAddress $mac -Description $HostName
+        Add-DhcpServerv4Filter -ComputerName $DHCPServer -List $List -MacAddress $mac -Description $HostName
         }
     Elseif ($Action -eq "Remove")
         {
