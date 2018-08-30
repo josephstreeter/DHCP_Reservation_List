@@ -107,7 +107,12 @@ function New-Reservation()
     if (-not $DHCPServer) {$DHCPServer="LocalHost"}
     
     $results=@()
-    $results=New-Object psobject -Property @{"scope"=$scope;"ip"=$ip;"group"=$group;"mac"=if ($mac -eq "auto"){Generate-MacAddress}Else{$mac};"Hostname"=$hostname}
+    $results=New-Object psobject -Property @{
+                                            "scope"=$scope
+                                            "ip"=$ip
+                                            "group"=$group
+                                            "mac"=if ($mac -eq "auto"){Generate-MacAddress}Else{$mac}
+                                            "Hostname"=$hostname}
     
     if ($confirm -ne $false) 
         {
@@ -137,7 +142,7 @@ function New-Reservation()
         "Nothing created"
         }
     Edit-FilterLists -list allow -Action add -mac $results.mac -HostName $results.hostname
-    Replicate-DHCPServers
+    if ($confirm -ne $false) {Replicate-DHCPServers}
     }
 
 Function Export-Reservation()
@@ -295,8 +300,8 @@ Function Edit-Reservation()
             -Name $(if ($Hostname) {$Hostname} Else {$current.Name}) `
             -Description $(if ($Group) {$Group} Else {$current.Description})
         
+        Edit-FilterLists -list allow -Action Remove -mac $Current.ClientID -HostName $Current.name
         Edit-FilterLists -list allow -Action add -mac $New.ClientID -HostName $new.name
-        #$res=Get-DhcpServerv4Reservation -IPAddress $ip
         }
     Replicate-DHCPServers
     }
