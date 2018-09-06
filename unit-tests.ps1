@@ -8,11 +8,12 @@ write-host "`nSetup Tests"
 rm .\lists\*
 
 Remove-Reservation -Data $newmac
+Remove-Reservation -Data $mac
 
 write-host "`nSetup Complete"
 
 #####################################
-$DHCPServers="192.168.0.100","192.168.0.101" 
+$DHCPServers=(Get-DhcpServerInDC).DNSName  
 
 write-host "`n`nCheck for existing reservation for $mac"
 pause
@@ -61,3 +62,11 @@ gc .\lists\Skidata.txt
 write-host "`nCheck for existing reservation for $newmac"
 pause
 Remove-Reservation -Data $newmac
+
+write-host "`n`nCheck for existing reservation for $mac"
+pause
+$DHCPServers | % {Get-DhcpServerv4Filter -ComputerName $_ | ? {$_.macaddress -eq $mac}} | ft -auto
+
+write-host "`nCheck for existing filter for $mac"
+pause
+$DHCPServers | % {Get-Reservation -Data $mac -DHCPServer $_} | ft -auto
