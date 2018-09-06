@@ -1,4 +1,6 @@
-﻿function validate-data($data,$type)
+﻿"Module Loaded"
+
+function validate-data($data,$type)
     {
     <#
     .SYNOPSIS
@@ -26,7 +28,7 @@
         "Scope" {$results = $data -match $scopeadd}
         "IP" {$results = $data -match $ipadd}
         "MAC" {if ($data -eq "auto"){$results=$true}Else{$results = $data -match $macadd}}
-        "Group" {$results = $group -contains $data}
+        "Group" {$results = $group -contains $data.split(";")[0]}
         }
     Return $results
     }
@@ -112,7 +114,8 @@ function New-Reservation()
                                             "ip"=$ip
                                             "group"=$group
                                             "mac"=if ($mac -eq "auto"){Generate-MacAddress}Else{$mac}
-                                            "Hostname"=$hostname}
+                                            "Hostname"=$hostname
+                                            }
     
     if ($confirm -ne $false) 
         {
@@ -351,6 +354,8 @@ function Replicate-DHCPServers()
     $Scopes=$reservations=@()
     $DHCPServers=(Get-DhcpServerInDC).DNSName    
     
+    Invoke-DhcpServerv4FailoverReplication -Force -Verbose
+    <#
     Foreach ($DHCPServer in $DHCPServers)
         {
         if (-not $DHCPServer) {$DHCPServer="LocalHost"}
@@ -383,6 +388,7 @@ function Replicate-DHCPServers()
         {
         "DHCP Servers synchronized"
         }
+        #>
     }
 
 Function Remove-Reservation()
@@ -412,3 +418,45 @@ Function Remove-Reservation()
         Replicate-DHCPServers
         }
     }
+
+function Archive-Lists($File,$NewName,$NewLoc)
+    {
+    Rename-Item -literalpath $File -NewName $NewName
+    Move-Item -literalpath $NewName -Destination $NewLoc
+    write-host $NewName
+    write-host $newloc
+    
+    if (Check-Item $ArchiveDir + $fileName)
+        {
+        Log-Event "INFORMATION" "IP List text file archive successful"
+        }
+    Else
+        {
+        Log-Event "ERROR" "IP List text file archive successful"
+        }
+    }
+
+Function Log-Event($EntryType,$Entry)
+    {
+    $date = get-date -uformat "%Y-%m-%d"
+    $datetime = get-date -uformat "%Y-%m-%d-%H:%m:%S"
+    $Logfile = $logDir+$date+"-logfile.txt"
+    
+    if (get-item $Logfile -ea 0)
+        {
+        $DateTime+"-"+$EntryType+"-"+$Entry | Out-File $Logfile -Append
+        }
+    Else
+        {
+        $DateTime+"-"+$EntryType+"-"+$Entry | Out-File $Logfile
+        }
+    }
+
+$BypassSanity=$true                  # Bypass sanity check
+$WorkDir="C:\Utilities\Scripts\DHCP\" # Working directory for script
+$ArchiveDir=$WorkDir + "Archive\"     # Directory for archived list files
+$LogDir=$WorkDir + "Logs\"            # Directory for log files
+$DHCPServer="LocalHost"               # Hostname of DHCP Server "pci-dhcp-a1.pci.wisc.edu"
+$tolerance=10                         # Number of changes to tolerate as part of the sanity check
+$Keepfiles=10                         # Number of list files to keep
+$KeepLogs=10                          # Number of log files to keep
