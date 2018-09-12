@@ -329,33 +329,34 @@ Function Edit-FilterLists()
     [Parameter(Mandatory=$True)][string]$list,
     [Parameter(Mandatory=$True)][string]$Action,
     [Parameter(Mandatory=$True)][ValidateScript({validate-data -data $_ -type MAC})][string]$mac,
-    [Parameter(Mandatory=$True)][string]$HostName,
-    [Parameter(Mandatory=$False)][string]$DHCPServer
+    [Parameter(Mandatory=$True)][string]$HostName
     )
-
-    if (-not $DHCPServer) {$DHCPServer="LocalHost"}
+    $DHCPServers=(Get-DhcpServerInDC).DNSName      
     
-    if ($Action -eq "Add")
+    Foreach ($DHCPServer in $DHCPServers)
         {
-        Add-DhcpServerv4Filter -ComputerName $DHCPServer -List $List -MacAddress $mac -Description $HostName -Verbose
-        }
-    Elseif ($Action -eq "Remove")
-        {
-        remove-DhcpServerv4Filter -ComputerName $DHCPServer -MacAddress $mac -Verbose
-        }
-    Else
-        {
-        "Improper action specified"
+        if ($Action -eq "Add")
+            {
+            Add-DhcpServerv4Filter -ComputerName $DHCPServer -List $List -MacAddress $mac -Description $HostName -Verbose
+            }
+        Elseif ($Action -eq "Remove")
+            {
+            remove-DhcpServerv4Filter -ComputerName $DHCPServer -MacAddress $mac -Verbose
+            }
+        Else
+            {
+            "Improper action specified"
+            }
         }
     }
 
 function Replicate-DHCPServers()
     {
-    $Scopes=$reservations=@()
-    $DHCPServers=(Get-DhcpServerInDC).DNSName    
-    
     Invoke-DhcpServerv4FailoverReplication -Force -Verbose
     <#
+    $Scopes=$reservations=@()
+    $DHCPServers=(Get-DhcpServerInDC).DNSName      
+    
     Foreach ($DHCPServer in $DHCPServers)
         {
         if (-not $DHCPServer) {$DHCPServer="LocalHost"}
@@ -415,6 +416,7 @@ Function Remove-Reservation()
         {
         $res | Remove-DhcpServerv4Reservation -Verbose
         $res | % {Edit-FilterLists -list allow -Action remove -mac $_.ClientID -HostName $_.name}
+        
         Replicate-DHCPServers
         }
     }
