@@ -317,7 +317,7 @@ Function Get-Reservation()
     )
     if (-not $DHCPServer) {$DHCPServer="LocalHost"}
 
-    $res=Get-DhcpServerv4Scope | % {Get-DhcpServerv4Reservation -ComputerName $DHCPServer -ScopeId $_.scopeid -ErrorAction SilentlyContinue} | `
+    $res=Get-DhcpServerv4Scope -ComputerName $DHCPServer -ea SilentlyContinue | % {Get-DhcpServerv4Reservation -ComputerName $DHCPServer -ScopeId $_.scopeid -ErrorAction SilentlyContinue} | `
         ? {($_.name -eq $data) -or ($_.ipaddress -eq $data) -or ($_.clientid -eq $data)  -or ($_.name -eq $data)  -or ($_.description -eq $data)}
     
     Return $res

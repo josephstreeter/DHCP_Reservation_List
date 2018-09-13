@@ -4,6 +4,8 @@ $newmac="10-11-12-ab-cd-ef"
 $Hostname="Servertest01" 
 $group="NCR"
 
+cd C:\utilities\scripts\
+
 if (get-module PCIDHCPManagement -ea SilentlyContinue) 
     {
     Remove-Module PCIdhcpmanagement
@@ -38,11 +40,11 @@ write-host "`ncreate new reservation for $mac"
 pause
 New-Reservation -scope 10.10.1.0 -ip $IP -mac $mac -Hostname $Hostname -group $Group
 
-write-host "`nCheck for new reservation for $mac"
+write-host "`nCheck for new filter for $mac"
 pause
 $DHCPServers | % {Get-DhcpServerv4Filter -ComputerName $_ -ea SilentlyContinue | ? {$_.macaddress -eq $mac}} | ft -auto
 
-write-host "`nCheck for new filter for $mac"
+write-host "`nCheck for new reservation for $mac"
 pause
 $DHCPServers | % {Get-Reservation -Data $mac -DHCPServer $_} | ft -auto
 
@@ -68,16 +70,16 @@ ls .\lists
 
 write-host "`nCheck data in files"
 pause
-gc .\lists\Skidata.txt
+gc .\lists\NCR.txt
 
 write-host "`nCheck for existing reservation for $newmac"
 pause
 Remove-Reservation -Data $newmac
 
-write-host "`n`nCheck for existing reservation for $mac"
+write-host "`n`nCheck for existing filter for $mac"
 pause
 $DHCPServers | % {Get-DhcpServerv4Filter -ComputerName $_ -ea SilentlyContinue | ? {$_.macaddress -eq $mac}} | ft -auto
 
-write-host "`nCheck for existing filter for $mac"
+write-host "`nCheck for existing reservation for $mac"
 pause
 $DHCPServers | % {Get-Reservation -Data $mac -DHCPServer $_} | ft -auto
