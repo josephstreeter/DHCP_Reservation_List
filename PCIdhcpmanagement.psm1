@@ -411,14 +411,20 @@ Function Remove-Reservation()
             Break
             }
         }
-    
-    If ($(Read-Host "Do you want to delete this reservation? (y/n)") -eq "y")
+    if ($res.count -ne 0)
         {
-        $res | Remove-DhcpServerv4Reservation -Verbose
-        $res | % {Edit-FilterLists -list allow -Action remove -mac $_.ClientID -HostName $_.name}
+        If ($(Read-Host "Do you want to delete this reservation? (y/n)") -eq "y")
+            {
+            $res | Remove-DhcpServerv4Reservation -Verbose
+            $res | % {Edit-FilterLists -list allow -Action remove -mac $_.ClientID -HostName $_.name}
         
-        Replicate-DHCPServers
+            Replicate-DHCPServers
         }
+    Else
+        {
+        "No reservation to remove"
+        }
+            }
     }
 
 function Archive-Lists($File,$NewName,$NewLoc)
