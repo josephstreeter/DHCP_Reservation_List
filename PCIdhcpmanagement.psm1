@@ -116,7 +116,7 @@ function New-Reservation()
                                             "mac"=if ($mac -eq "auto"){Generate-MacAddress}Else{$mac}
                                             "Hostname"=$hostname
                                             }
-    
+
     if ($confirm -ne $false) 
         {
         "Reservation information:
@@ -269,11 +269,8 @@ Function Edit-Reservation()
     
     if (-not $DHCPServer) {$DHCPServer="LocalHost"}
 
-    if (-not($mac -or $Hostname -or $group))
-        {
-        "You must include at least one attribute to update"
-        Break
-        }
+    $res=Get-DhcpServerv4Scope -ComputerName $DHCPServer -ea SilentlyContinue | % {Get-DhcpServerv4Reservation -ComputerName $DHCPServer -ScopeId $_.scopeid -ErrorAction SilentlyContinue} | `
+        ? {($_.name -eq $data) -or ($_.ipaddress -eq $data) -or ($_.clientid -eq $data)  -or ($_.name -eq $data)  -or ($_.description -eq $data)}
     
     $Current=Get-DhcpServerv4Reservation -IPAddress $ip -ComputerName $DHCPServer
     $new=@()
